@@ -18,6 +18,19 @@ class BeasiswaController extends Controller
             'data' => $data
         ]);
     }
+        public function getByNama(string $nama)
+    {
+        $beasiswa = Beasiswa::whereRaw(
+            'LOWER(nama_beasiswa) LIKE ?',
+            ['%' . strtolower($nama) . '%']
+        )->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Data beasiswa berhasil dicari',
+            'data' => $beasiswa
+        ]);
+    }
 
     public function store(Request $request)
     {

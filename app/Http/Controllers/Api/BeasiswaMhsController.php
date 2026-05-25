@@ -24,6 +24,26 @@ class BeasiswaMhsController extends Controller
             'data' => $beasiswa
         ]);
     }
+   
+    public function getByNim(string $nim)
+    {
+        $beasiswa = BeasiswaMhs::with('beasiswa')
+            ->whereRaw('LOWER(nim) = ?', [strtolower($nim)])
+            ->first();
+
+        if (!$beasiswa) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Data beasiswa mahasiswa tidak ditemukan'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Data beasiswa mahasiswa berhasil diambil',
+            'data' => $beasiswa
+        ]);
+    }
 
     /**
      * Menyimpan data penerima beasiswa

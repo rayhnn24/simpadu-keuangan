@@ -4,193 +4,118 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\MhsUkt;
-use App\Models\Pembayaran;
 use Illuminate\Http\Request;
 
 class LaporanKeuanganController extends Controller
 {
     public function index(Request $request)
     {
-        /*
-        |--------------------------------------------------------------------------
-        | Query dasar
-        |--------------------------------------------------------------------------
-        */
+        // Query dasar
         $query = MhsUkt::with(
             'kategori',
             'beasiswaMhs.beasiswa',
             'pembayaran'
         );
 
-        /*
-        |--------------------------------------------------------------------------
-        | Filter semester
-        |--------------------------------------------------------------------------
-        */
+        // Filter semester
         if ($request->semester) {
-
             $query->where(
                 'semester',
                 $request->semester
             );
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Filter tahun akademik
-        |--------------------------------------------------------------------------
-        */
+        // Filter tahun akademik
         if ($request->tahun_akademik) {
-
             $query->where(
                 'tahun_akademik',
                 $request->tahun_akademik
             );
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Ambil data mahasiswa UKT
-        |--------------------------------------------------------------------------
-        */
+        // Ambil data mahasiswa UKT
         $mhsUkt = $query->get();
 
-        /*
-        |--------------------------------------------------------------------------
-        | Total pemasukan
-        |--------------------------------------------------------------------------
-        */
+        // Total pemasukan
         $totalPemasukan = 0;
 
-        /*
-        |--------------------------------------------------------------------------
-        | Total tunggakan
-        |--------------------------------------------------------------------------
-        */
+        // Total tunggakan
         $totalTunggakan = 0;
 
-        /*
-        |--------------------------------------------------------------------------
-        | Total potongan beasiswa
-        |--------------------------------------------------------------------------
-        */
+        // Total potongan beasiswa
         $totalPotonganBeasiswa = 0;
 
-        /*
-        |--------------------------------------------------------------------------
-        | Detail mahasiswa menunggak
-        |--------------------------------------------------------------------------
-        */
+        // Detail mahasiswa menunggak
         $mahasiswaMenunggak = [];
 
         foreach ($mhsUkt as $item) {
 
-            /*
-            |--------------------------------------------------------------------------
-            | Nominal UKT asli
-            |--------------------------------------------------------------------------
-            */
-            $nominalUkt =
-                $item->kategori
-                    ? $item->kategori->nominal_ukt
-                    : 0;
+            // Nominal UKT asli
+            $nominalUkt = $item->kategori
+                ? $item->kategori->nominal_ukt
+                : 0;
 
-            /*
-            |--------------------------------------------------------------------------
-            | Potongan beasiswa
-            |--------------------------------------------------------------------------
-            */
+            // Total tagihan dari kolom mhs_ukt
+            $totalTagihan = $item->total_tagihan;
+
+            // Fallback jika total_tagihan masih 0 tetapi bukan beasiswa penuh
+            if ($totalTagihan <= 0) {
+                $punyaBeasiswaPenuh =
+                    $item->beasiswaMhs &&
+                    $item->beasiswaMhs->beasiswa &&
+                    $item->beasiswaMhs->beasiswa->potongan_persen >= 100;
+
+                if (!$punyaBeasiswaPenuh) {
+                    $totalTagihan = $nominalUkt;
+                }
+            }
+
+            // Data beasiswa
             $potonganPersen = 0;
-
             $namaBeasiswa = null;
 
             if (
                 $item->beasiswaMhs &&
                 $item->beasiswaMhs->beasiswa
             ) {
-
                 $potonganPersen =
-                    $item
-                        ->beasiswaMhs
-                        ->beasiswa
-                        ->potongan_persen;
+                    $item->beasiswaMhs->beasiswa->potongan_persen;
 
                 $namaBeasiswa =
-                    $item
-                        ->beasiswaMhs
-                        ->beasiswa
-                        ->nama_beasiswa;
+                    $item->beasiswaMhs->beasiswa->nama_beasiswa;
             }
 
-            /*
-            |--------------------------------------------------------------------------
-            | Hitung nominal potongan
-            |--------------------------------------------------------------------------
-            */
-            $potonganNominal =
-                ($potonganPersen / 100)
-                * $nominalUkt;
+            // Hitung nominal potongan dari selisih nominal UKT dan total tagihan
+            $potonganNominal = $nominalUkt - $totalTagihan;
 
-            /*
-            |--------------------------------------------------------------------------
-            | Total tagihan akhir
-            |--------------------------------------------------------------------------
-            */
-            $totalTagihan =
-                $nominalUkt - $potonganNominal;
+            if ($potonganNominal < 0) {
+                $potonganNominal = 0;
+            }
 
-            /*
-            |--------------------------------------------------------------------------
-            | Total pembayaran
-            |--------------------------------------------------------------------------
-            */
+            // Total pembayaran
             $totalBayar =
-                $item->pembayaran
-                    ->sum('jumlah_bayar');
+                $item->pembayaran->sum('jumlah_bayar');
 
-            /*
-            |--------------------------------------------------------------------------
-            | Sisa tagihan
-            |--------------------------------------------------------------------------
-            */
+            // Sisa tagihan
             $sisaTagihan =
                 $totalTagihan - $totalBayar;
 
             if ($sisaTagihan < 0) {
-
                 $sisaTagihan = 0;
             }
 
-            /*
-            |--------------------------------------------------------------------------
-            | Akumulasi laporan
-            |--------------------------------------------------------------------------
-            */
-            $totalPemasukan +=
-                $totalBayar;
+            // Akumulasi laporan
+            $totalPemasukan += $totalBayar;
+            $totalTunggakan += $sisaTagihan;
+            $totalPotonganBeasiswa += $potonganNominal;
 
-            $totalTunggakan +=
-                $sisaTagihan;
-
-            $totalPotonganBeasiswa +=
-                $potonganNominal;
-
-            /*
-            |--------------------------------------------------------------------------
-            | Mahasiswa menunggak
-            |--------------------------------------------------------------------------
-            */
+            // Mahasiswa menunggak
             if ($sisaTagihan > 0) {
-
                 $mahasiswa =
-                    $this->getMahasiswaByNim(
-                        $item->nim
-                    );
+                    $this->getMahasiswaByNim($item->nim);
 
                 $mahasiswaMenunggak[] = [
-
-                    'nim' =>
-                        $item->nim,
+                    'nim' => $item->nim,
 
                     'nama_mahasiswa' =>
                         $mahasiswa['nama_mahasiswa'],
@@ -204,11 +129,9 @@ class LaporanKeuanganController extends Controller
                     'tahun_akademik' =>
                         $item->tahun_akademik,
 
-                    'kategori_ukt' =>
-
-                        $item->kategori
-                            ? $item->kategori->nama_kategori
-                            : null,
+                    'kategori_ukt' => $item->kategori
+                        ? $item->kategori->kategori
+                        : null,
 
                     'nominal_ukt' =>
                         $nominalUkt,
@@ -218,6 +141,12 @@ class LaporanKeuanganController extends Controller
 
                     'potongan_persen' =>
                         $potonganPersen,
+
+                    'potongan_nominal' =>
+                        $potonganNominal,
+
+                    'total_tagihan' =>
+                        $totalTagihan,
 
                     'total_bayar' =>
                         $totalBayar,
@@ -231,49 +160,28 @@ class LaporanKeuanganController extends Controller
             }
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Statistik pembayaran
-        |--------------------------------------------------------------------------
-        */
+        // Statistik pembayaran
         $totalLunas =
             $mhsUkt
-                ->where(
-                    'status_pembayaran',
-                    'LUNAS'
-                )
+                ->where('status_pembayaran', 'LUNAS')
                 ->count();
 
         $totalCicilan =
             $mhsUkt
-                ->where(
-                    'status_pembayaran',
-                    'CICILAN'
-                )
+                ->where('status_pembayaran', 'CICILAN')
                 ->count();
 
         $totalBelumLunas =
             $mhsUkt
-                ->where(
-                    'status_pembayaran',
-                    'BELUM_LUNAS'
-                )
+                ->where('status_pembayaran', 'BELUM_LUNAS')
                 ->count();
 
-        /*
-        |--------------------------------------------------------------------------
-        | Response
-        |--------------------------------------------------------------------------
-        */
+        // Response
         return response()->json([
-
             'success' => true,
-
-            'message' =>
-                'Laporan keuangan berhasil diambil',
+            'message' => 'Laporan keuangan berhasil diambil',
 
             'filter' => [
-
                 'semester' =>
                     $request->semester,
 
@@ -282,7 +190,6 @@ class LaporanKeuanganController extends Controller
             ],
 
             'data' => [
-
                 'total_pemasukan' =>
                     $totalPemasukan,
 
@@ -307,15 +214,52 @@ class LaporanKeuanganController extends Controller
         ]);
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Dummy data mahasiswa
-    |--------------------------------------------------------------------------
-    */
+    public function getBySemester(string $semester)
+    {
+        $request = new Request();
+
+        $request->merge([
+            'semester' => $semester
+        ]);
+
+        return $this->index($request);
+    }
+
+    public function getByTahunAkademik(string $tahun_akademik)
+    {
+        $tahunAkademik =
+            str_replace('-', '/', $tahun_akademik);
+
+        $request = new Request();
+
+        $request->merge([
+            'tahun_akademik' => $tahunAkademik
+        ]);
+
+        return $this->index($request);
+    }
+
+    public function getBySemesterTahun(
+        string $semester,
+        string $tahun_akademik
+    ) {
+        $tahunAkademik =
+            str_replace('-', '/', $tahun_akademik);
+
+        $request = new Request();
+
+        $request->merge([
+            'semester' => $semester,
+            'tahun_akademik' => $tahunAkademik
+        ]);
+
+        return $this->index($request);
+    }
+
+    // Dummy data mahasiswa
     private function getMahasiswaByNim($nim)
     {
         $dummyMahasiswa = [
-
             'C030324095' => [
                 'nama_mahasiswa' => 'Rayhan',
                 'prodi' => 'Teknik Informatika'
@@ -338,9 +282,7 @@ class LaporanKeuanganController extends Controller
         ];
 
         return $dummyMahasiswa[$nim] ?? [
-
             'nama_mahasiswa' => 'Tidak ditemukan',
-
             'prodi' => '-'
         ];
     }

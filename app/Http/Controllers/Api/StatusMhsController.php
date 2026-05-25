@@ -22,6 +22,51 @@ class StatusMhsController extends Controller
         ]);
     }
 
+        public function getByMhsUkt(string $id_mhs_ukt)
+    {
+        $statusMhs = StatusMhs::with('mhsUkt')
+            ->where('id_mhs_ukt', $id_mhs_ukt)
+            ->first();
+
+        if (!$statusMhs) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Status mahasiswa tidak ditemukan'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status mahasiswa berhasil diambil',
+            'data' => $statusMhs
+        ]);
+    }
+
+    public function getByNim(string $nim)
+    {
+        $statusMhs = StatusMhs::with('mhsUkt')
+            ->whereHas('mhsUkt', function ($query) use ($nim) {
+                $query->whereRaw(
+                    'LOWER(nim) = ?',
+                    [strtolower($nim)]
+                );
+            })
+            ->first();
+
+        if (!$statusMhs) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Status mahasiswa berdasarkan NIM tidak ditemukan'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status mahasiswa berdasarkan NIM berhasil diambil',
+            'data' => $statusMhs
+        ]);
+    }
+
     /**
      * Menyimpan status mahasiswa baru
      */

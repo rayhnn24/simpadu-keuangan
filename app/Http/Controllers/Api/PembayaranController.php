@@ -27,6 +27,192 @@ class PembayaranController extends Controller
     }
 
     /**
+     * Menampilkan pembayaran berdasarkan id_mhs_ukt
+     * Endpoint: GET /api/pembayaran/mhs-ukt/{id_mhs_ukt}
+     */
+    public function getByMhsUkt(string $id_mhs_ukt)
+    {
+        $mhsUkt = MhsUkt::with(
+            'kategori',
+            'beasiswaMhs.beasiswa',
+            'pembayaran'
+        )->findOrFail($id_mhs_ukt);
+
+        $totalTagihan = $mhsUkt->total_tagihan;
+
+        $nominalUkt = $mhsUkt->kategori
+            ? $mhsUkt->kategori->nominal_ukt
+            : 0;
+
+        if ($totalTagihan <= 0) {
+            $punyaBeasiswaPenuh =
+                $mhsUkt->beasiswaMhs &&
+                $mhsUkt->beasiswaMhs->beasiswa &&
+                $mhsUkt->beasiswaMhs->beasiswa->potongan_persen >= 100;
+
+            if (!$punyaBeasiswaPenuh) {
+                $totalTagihan = $nominalUkt;
+            }
+        }
+
+        $totalBayar = $mhsUkt->pembayaran->sum('jumlah_bayar');
+
+        $sisaTagihan = $totalTagihan - $totalBayar;
+
+        if ($sisaTagihan < 0) {
+            $sisaTagihan = 0;
+        }
+
+        $potonganPersen = (
+            $mhsUkt->beasiswaMhs &&
+            $mhsUkt->beasiswaMhs->beasiswa
+        )
+            ? $mhsUkt->beasiswaMhs->beasiswa->potongan_persen
+            : 0;
+
+        $potonganNominal = $nominalUkt - $totalTagihan;
+
+        if ($potonganNominal < 0) {
+            $potonganNominal = 0;
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Data pembayaran mahasiswa berhasil diambil',
+            'data' => [
+                'mahasiswa_ukt' => [
+                    'id_mhs_ukt' => $mhsUkt->id_mhs_ukt,
+                    'nim' => $mhsUkt->nim,
+                    'semester' => $mhsUkt->semester,
+                    'tahun_akademik' => $mhsUkt->tahun_akademik,
+                    'status_pembayaran' => $mhsUkt->status_pembayaran,
+                ],
+                'tagihan' => [
+                    'kategori_ukt' => $mhsUkt->kategori
+                        ? $mhsUkt->kategori->kategori
+                        : null,
+                    'nominal_ukt' => $nominalUkt,
+                    'nama_beasiswa' => (
+                        $mhsUkt->beasiswaMhs &&
+                        $mhsUkt->beasiswaMhs->beasiswa
+                    )
+                        ? $mhsUkt->beasiswaMhs->beasiswa->nama_beasiswa
+                        : null,
+                    'potongan_persen' => $potonganPersen,
+                    'potongan_nominal' => $potonganNominal,
+                    'total_tagihan' => $totalTagihan,
+                    'total_bayar' => $totalBayar,
+                    'sisa_tagihan' => $sisaTagihan,
+                ],
+                'riwayat_pembayaran' => $mhsUkt->pembayaran->map(function ($item) {
+                    return [
+                        'id_pembayaran' => $item->id_pembayaran,
+                        'jumlah_bayar' => $item->jumlah_bayar,
+                        'tgl_pembayaran' => $item->tgl_pembayaran,
+                        'keterangan' => $item->keterangan,
+                        'created_at' => $item->created_at,
+                    ];
+                })
+            ]
+        ]);
+    }
+    
+    public function getByNim(string $nim)
+{
+    $mhsUkt = MhsUkt::with(
+        'kategori',
+        'beasiswaMhs.beasiswa',
+        'pembayaran'
+    )
+        ->whereRaw('LOWER(nim) = ?', [strtolower($nim)])
+        ->first();
+
+    if (!$mhsUkt) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Data mahasiswa UKT tidak ditemukan'
+        ], 404);
+    }
+
+    $totalTagihan = $mhsUkt->total_tagihan;
+
+    $nominalUkt = $mhsUkt->kategori
+        ? $mhsUkt->kategori->nominal_ukt
+        : 0;
+
+    if ($totalTagihan <= 0) {
+        $punyaBeasiswaPenuh =
+            $mhsUkt->beasiswaMhs &&
+            $mhsUkt->beasiswaMhs->beasiswa &&
+            $mhsUkt->beasiswaMhs->beasiswa->potongan_persen >= 100;
+
+        if (!$punyaBeasiswaPenuh) {
+            $totalTagihan = $nominalUkt;
+        }
+    }
+
+    $totalBayar = $mhsUkt->pembayaran->sum('jumlah_bayar');
+
+    $sisaTagihan = $totalTagihan - $totalBayar;
+
+    if ($sisaTagihan < 0) {
+        $sisaTagihan = 0;
+    }
+
+    $potonganPersen = (
+        $mhsUkt->beasiswaMhs &&
+        $mhsUkt->beasiswaMhs->beasiswa
+    )
+        ? $mhsUkt->beasiswaMhs->beasiswa->potongan_persen
+        : 0;
+
+    $potonganNominal = $nominalUkt - $totalTagihan;
+
+    if ($potonganNominal < 0) {
+        $potonganNominal = 0;
+    }
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Data pembayaran mahasiswa berhasil diambil berdasarkan NIM',
+        'data' => [
+            'mahasiswa_ukt' => [
+                'id_mhs_ukt' => $mhsUkt->id_mhs_ukt,
+                'nim' => $mhsUkt->nim,
+                'semester' => $mhsUkt->semester,
+                'tahun_akademik' => $mhsUkt->tahun_akademik,
+                'status_pembayaran' => $mhsUkt->status_pembayaran,
+            ],
+            'tagihan' => [
+                'kategori_ukt' => $mhsUkt->kategori
+                    ? $mhsUkt->kategori->kategori
+                    : null,
+                'nominal_ukt' => $nominalUkt,
+                'nama_beasiswa' => (
+                    $mhsUkt->beasiswaMhs &&
+                    $mhsUkt->beasiswaMhs->beasiswa
+                )
+                    ? $mhsUkt->beasiswaMhs->beasiswa->nama_beasiswa
+                    : null,
+                'potongan_persen' => $potonganPersen,
+                'potongan_nominal' => $potonganNominal,
+                'total_tagihan' => $totalTagihan,
+                'total_bayar' => $totalBayar,
+                'sisa_tagihan' => $sisaTagihan,
+            ],
+            'riwayat_pembayaran' => $mhsUkt->pembayaran->map(function ($item) {
+                return [
+                    'id_pembayaran' => $item->id_pembayaran,
+                    'jumlah_bayar' => $item->jumlah_bayar,
+                    'tgl_pembayaran' => $item->tgl_pembayaran,
+                    'keterangan' => $item->keterangan,
+                    'created_at' => $item->created_at,
+                ];
+            })
+        ]
+    ]);
+}
+    /**
      * Menyimpan pembayaran baru
      */
     public function store(Request $request)

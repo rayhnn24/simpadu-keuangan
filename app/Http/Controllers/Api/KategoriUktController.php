@@ -8,16 +8,28 @@ use Illuminate\Http\Request;
 
 class KategoriUktController extends Controller
 {
+    /**
+     * Menampilkan semua kategori UKT
+     * Bisa filter dengan query:
+     * /api/kategori-ukt?id_prodi=7
+     * /api/kategori-ukt?id_prodi=7&jenjang=D3
+     */
     public function index(Request $request)
     {
         $query = KategoriUkt::query();
 
         if ($request->id_prodi) {
-            $query->where('id_prodi', $request->id_prodi);
+            $query->where(
+                'id_prodi',
+                $request->id_prodi
+            );
         }
 
         if ($request->jenjang) {
-            $query->where('jenjang', $request->jenjang);
+            $query->where(
+                'jenjang',
+                strtoupper($request->jenjang)
+            );
         }
 
         $kategori = $query->get();
@@ -29,20 +41,66 @@ class KategoriUktController extends Controller
         ]);
     }
 
+    /**
+     * Search kategori UKT berdasarkan id_prodi
+     * Endpoint:
+     * /api/kategori-ukt/prodi/{id_prodi}
+     */
+    public function getByProdi(string $id_prodi)
+    {
+        $kategori = KategoriUkt::where(
+            'id_prodi',
+            $id_prodi
+        )->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Data kategori UKT berdasarkan prodi berhasil diambil',
+            'data' => $kategori
+        ]);
+    }
+
+    /**
+     * Search kategori UKT berdasarkan id_prodi dan jenjang
+     * Endpoint:
+     * /api/kategori-ukt/prodi/{id_prodi}/jenjang/{jenjang}
+     */
+    public function getByProdiJenjang(string $id_prodi, string $jenjang)
+    {
+        $kategori = KategoriUkt::where(
+                'id_prodi',
+                $id_prodi
+            )
+            ->where(
+                'jenjang',
+                strtoupper($jenjang)
+            )
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Data kategori UKT berdasarkan prodi dan jenjang berhasil diambil',
+            'data' => $kategori
+        ]);
+    }
+
+    /**
+     * Menyimpan kategori UKT baru
+     */
     public function store(Request $request)
     {
         $request->validate([
             'id_prodi' => 'required|numeric',
-            'kelompok_kategori' => 'required',
+            'kategori' => 'required',
             'nominal_ukt' => 'required|numeric|min:0',
             'jenjang' => 'required'
         ]);
 
         $kategori = KategoriUkt::create([
             'id_prodi' => $request->id_prodi,
-            'kelompok_kategori' => $request->kelompok_kategori,
+            'kategori' => $request->kategori,
             'nominal_ukt' => $request->nominal_ukt,
-            'jenjang' => $request->jenjang
+            'jenjang' => strtoupper($request->jenjang)
         ]);
 
         return response()->json([
@@ -52,6 +110,9 @@ class KategoriUktController extends Controller
         ], 201);
     }
 
+    /**
+     * Menampilkan detail kategori UKT
+     */
     public function show(string $id)
     {
         $kategori = KategoriUkt::findOrFail($id);
@@ -63,22 +124,25 @@ class KategoriUktController extends Controller
         ]);
     }
 
+    /**
+     * Update kategori UKT
+     */
     public function update(Request $request, string $id)
     {
         $kategori = KategoriUkt::findOrFail($id);
 
         $request->validate([
             'id_prodi' => 'required|numeric',
-            'kelompok_kategori' => 'required',
+            'kategori' => 'required',
             'nominal_ukt' => 'required|numeric|min:0',
             'jenjang' => 'required'
         ]);
 
         $kategori->update([
             'id_prodi' => $request->id_prodi,
-            'kelompok_kategori' => $request->kelompok_kategori,
+            'kategori' => $request->kategori,
             'nominal_ukt' => $request->nominal_ukt,
-            'jenjang' => $request->jenjang
+            'jenjang' => strtoupper($request->jenjang)
         ]);
 
         return response()->json([
@@ -88,6 +152,9 @@ class KategoriUktController extends Controller
         ]);
     }
 
+    /**
+     * Hapus kategori UKT
+     */
     public function destroy(string $id)
     {
         $kategori = KategoriUkt::findOrFail($id);
