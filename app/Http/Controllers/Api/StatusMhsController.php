@@ -15,14 +15,21 @@ class StatusMhsController extends Controller
     {
         $statusMhs = StatusMhs::with('mhsUkt')->get();
 
+        $data = $statusMhs->map(function ($item) {
+            return $this->formatStatusMhsResponse($item);
+        });
+
         return response()->json([
             'success' => true,
             'message' => 'Data status mahasiswa berhasil diambil',
-            'data' => $statusMhs
+            'data' => $data
         ]);
     }
 
-        public function getByMhsUkt(string $id_mhs_ukt)
+    /**
+     * Menampilkan status mahasiswa berdasarkan id_mhs_ukt
+     */
+    public function getByMhsUkt(string $id_mhs_ukt)
     {
         $statusMhs = StatusMhs::with('mhsUkt')
             ->where('id_mhs_ukt', $id_mhs_ukt)
@@ -38,10 +45,13 @@ class StatusMhsController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Status mahasiswa berhasil diambil',
-            'data' => $statusMhs
+            'data' => $this->formatStatusMhsResponse($statusMhs)
         ]);
     }
 
+    /**
+     * Menampilkan status mahasiswa berdasarkan NIM
+     */
     public function getByNim(string $nim)
     {
         $statusMhs = StatusMhs::with('mhsUkt')
@@ -63,37 +73,40 @@ class StatusMhsController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Status mahasiswa berdasarkan NIM berhasil diambil',
-            'data' => $statusMhs
+            'data' => $this->formatStatusMhsResponse($statusMhs)
         ]);
     }
 
     /**
-     * Menyimpan status mahasiswa baru
+     * Menyimpan status mahasiswa baru / update jika sudah ada
      */
     public function store(Request $request)
-{
-    $request->validate([
-        'id_mhs_ukt' => 'required|exists:mhs_ukt,id_mhs_ukt',
-        'status' => 'required|in:AKTIF,NONAKTIF',
-        'keterangan' => 'nullable'
-    ]);
+    {
+        $request->validate([
+            'id_mhs_ukt' => 'required|exists:mhs_ukt,id_mhs_ukt',
+            'status' => 'required|in:AKTIF,NONAKTIF',
+            'keterangan' => 'nullable'
+        ]);
 
-    $statusMhs = StatusMhs::updateOrCreate(
-        [
-            'id_mhs_ukt' => $request->id_mhs_ukt
-        ],
-        [
-            'status' => $request->status,
-            'keterangan' => $request->keterangan
-        ]
-    );
+        $statusMhs = StatusMhs::updateOrCreate(
+            [
+                'id_mhs_ukt' => $request->id_mhs_ukt
+            ],
+            [
+                'status' => $request->status,
+                'keterangan' => $request->keterangan
+            ]
+        );
 
-    return response()->json([
-        'success' => true,
-        'message' => 'Status mahasiswa berhasil disimpan',
-        'data' => $statusMhs
-    ], 201);
-}
+        $statusMhs = StatusMhs::with('mhsUkt')
+            ->findOrFail($statusMhs->id_status);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Status mahasiswa berhasil disimpan',
+            'data' => $this->formatStatusMhsResponse($statusMhs)
+        ], 201);
+    }
 
     /**
      * Menampilkan detail status mahasiswa
@@ -106,7 +119,7 @@ class StatusMhsController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Detail status mahasiswa berhasil diambil',
-            'data' => $statusMhs
+            'data' => $this->formatStatusMhsResponse($statusMhs)
         ]);
     }
 
@@ -127,10 +140,13 @@ class StatusMhsController extends Controller
             'keterangan' => $request->keterangan
         ]);
 
+        $statusMhs = StatusMhs::with('mhsUkt')
+            ->findOrFail($id);
+
         return response()->json([
             'success' => true,
             'message' => 'Status mahasiswa berhasil diupdate',
-            'data' => $statusMhs
+            'data' => $this->formatStatusMhsResponse($statusMhs)
         ]);
     }
 
@@ -147,5 +163,38 @@ class StatusMhsController extends Controller
             'success' => true,
             'message' => 'Status mahasiswa berhasil dihapus'
         ]);
+    }
+
+    /**
+     * Format response status mahasiswa
+     */
+    private function formatStatusMhsResponse($item)
+    {
+        return [
+            'id_status' => $item->id_status,
+
+            'mahasiswa_ukt' => [
+                'id_mhs_ukt' => $item->mhsUkt
+                    ? $item->mhsUkt->id_mhs_ukt
+                    : $item->id_mhs_ukt,
+
+                'nim' => $item->mhsUkt
+                    ? $item->mhsUkt->nim
+                    : null,
+
+                'semester' => $item->mhsUkt
+                    ? $item->mhsUkt->semester
+                    : null,
+
+                'tahun_akademik' => $item->mhsUkt
+                    ? $item->mhsUkt->tahun_akademik
+                    : null
+            ],
+
+            'status' => [
+                'status_mhs' => $item->status,
+                'keterangan' => $item->keterangan
+            ]
+        ];
     }
 }

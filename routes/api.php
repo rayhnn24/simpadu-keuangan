@@ -7,99 +7,21 @@ use App\Http\Controllers\Api\PembayaranController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\BeasiswaMhsController;
 use App\Http\Controllers\Api\BeasiswaController;
-use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\LaporanKeuanganController;
 use App\Http\Controllers\Api\StatusMhsController;
 
-//route khusus / search / lookup
-// MHS UKT
-Route::get(
-    'mhs-ukt/nim/{nim}',
-    [MhsUktController::class, 'showByNim']
-);
-
-Route::get(
-    'mhs-ukt/{id}/histori-pembayaran',
-    [MhsUktController::class, 'historiPembayaran']
-);
-
-// KATEGORI UKT
-Route::get(
-    'kategori-ukt/prodi/{id_prodi}',
-    [KategoriUktController::class, 'getByProdi']
-);
-
-Route::get(
-    'kategori-ukt/prodi/{id_prodi}/jenjang/{jenjang}',
-    [KategoriUktController::class, 'getByProdiJenjang']
-);
-Route::get(
-    'mhs-ukt/status/{status}',
-    [MhsUktController::class, 'getByStatus']
-);
-
-Route::get(
-    'mhs-ukt/semester/{semester}',
-    [MhsUktController::class, 'getBySemester']
-);
-
-Route::get(
-    'mhs-ukt/search/{keyword}',
-    [MhsUktController::class, 'search']
-);
-
-// PEMBAYARAN
-Route::get(
-    'pembayaran/mhs-ukt/{id_mhs_ukt}',
-    [PembayaranController::class, 'getByMhsUkt']
-);
-
-Route::get(
-    'pembayaran/nim/{nim}',
-    [PembayaranController::class, 'getByNim']
-);
-
-Route::apiResource(
-    'pembayaran',
-    PembayaranController::class
-);
-
-// BEASISWA MAHASISWA
-Route::get(
-    'beasiswa/nim/{nim}',
-    [BeasiswaMhsController::class, 'getByNim']
-);
-
-// MASTER BEASISWA
-Route::get(
-    'beasiswa-master/nama/{nama}',
-    [BeasiswaController::class, 'getByNama']
-);
-
-// LAPORAN KEUANGAN
-Route::get(
-    'laporan-keuangan',
-    [LaporanKeuanganController::class, 'index']
-);
-
-// DASHBOARD
+// Dashboard
 Route::get(
     'dashboard',
     [DashboardController::class, 'index']
 );
 
-//status mahasiswa
+// Laporan Keuangan
 Route::get(
-    'status-mhs/mhs-ukt/{id_mhs_ukt}',
-    [StatusMhsController::class, 'getByMhsUkt']
+    'laporan-keuangan',
+    [LaporanKeuanganController::class, 'index']
 );
 
-Route::get(
-    'status-mhs/nim/{nim}',
-    [StatusMhsController::class, 'getByNim']
-);
-
-// LAPORAN KEUANGAN
 Route::get(
     'laporan-keuangan/semester/{semester}',
     [LaporanKeuanganController::class, 'getBySemester']
@@ -115,9 +37,75 @@ Route::get(
     [LaporanKeuanganController::class, 'getBySemesterTahun']
 );
 
+// MHS UKT - route khusus
 Route::get(
-    'laporan-keuangan',
-    [LaporanKeuanganController::class, 'index']
+    'mhs-ukt/nim/{nim}',
+    [MhsUktController::class, 'showByNim']
+);
+
+Route::get(
+    'mhs-ukt/status/{status}',
+    [MhsUktController::class, 'getByStatus']
+);
+
+Route::get(
+    'mhs-ukt/semester/{semester}',
+    [MhsUktController::class, 'getBySemester']
+);
+
+Route::get(
+    'mhs-ukt/search/{keyword}',
+    [MhsUktController::class, 'search']
+);
+
+Route::get(
+    'mhs-ukt/{id}/histori-pembayaran',
+    [MhsUktController::class, 'historiPembayaran']
+);
+
+// Kategori UKT - route khusus
+Route::get(
+    'kategori-ukt/prodi/{id_prodi}',
+    [KategoriUktController::class, 'getByProdi']
+);
+
+Route::get(
+    'kategori-ukt/prodi/{id_prodi}/jenjang/{jenjang}',
+    [KategoriUktController::class, 'getByProdiJenjang']
+);
+
+// Pembayaran - route khusus
+Route::get(
+    'pembayaran/mhs-ukt/{id_mhs_ukt}',
+    [PembayaranController::class, 'getByMhsUkt']
+);
+
+Route::get(
+    'pembayaran/nim/{nim}',
+    [PembayaranController::class, 'getByNim']
+);
+
+// Beasiswa Mahasiswa - route khusus
+Route::get(
+    'beasiswa/nim/{nim}',
+    [BeasiswaMhsController::class, 'getByNim']
+);
+
+// Master Beasiswa - route khusus
+Route::get(
+    'beasiswa-master/nama/{nama}',
+    [BeasiswaController::class, 'getByNama']
+);
+
+// Status Mahasiswa - route khusus
+Route::get(
+    'status-mhs/mhs-ukt/{id_mhs_ukt}',
+    [StatusMhsController::class, 'getByMhsUkt']
+);
+
+Route::get(
+    'status-mhs/nim/{nim}',
+    [StatusMhsController::class, 'getByNim']
 );
 
 // Resource routes

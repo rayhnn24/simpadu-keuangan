@@ -10,9 +10,9 @@ class KategoriUktController extends Controller
 {
     /**
      * Menampilkan semua kategori UKT
-     * Bisa filter dengan query:
-     * /api/kategori-ukt?id_prodi=7
-     * /api/kategori-ukt?id_prodi=7&jenjang=D3
+     * Bisa filter:
+     * GET /api/kategori-ukt?id_prodi=7
+     * GET /api/kategori-ukt?id_prodi=7&jenjang=D3
      */
     public function index(Request $request)
     {
@@ -34,17 +34,19 @@ class KategoriUktController extends Controller
 
         $kategori = $query->get();
 
+        $data = $kategori->map(function ($item) {
+            return $this->formatKategoriResponse($item);
+        });
+
         return response()->json([
             'success' => true,
             'message' => 'Data kategori UKT berhasil diambil',
-            'data' => $kategori
+            'data' => $data
         ]);
     }
 
     /**
-     * Search kategori UKT berdasarkan id_prodi
-     * Endpoint:
-     * /api/kategori-ukt/prodi/{id_prodi}
+     * Menampilkan kategori UKT berdasarkan id_prodi
      */
     public function getByProdi(string $id_prodi)
     {
@@ -53,17 +55,19 @@ class KategoriUktController extends Controller
             $id_prodi
         )->get();
 
+        $data = $kategori->map(function ($item) {
+            return $this->formatKategoriResponse($item);
+        });
+
         return response()->json([
             'success' => true,
             'message' => 'Data kategori UKT berdasarkan prodi berhasil diambil',
-            'data' => $kategori
+            'data' => $data
         ]);
     }
 
     /**
-     * Search kategori UKT berdasarkan id_prodi dan jenjang
-     * Endpoint:
-     * /api/kategori-ukt/prodi/{id_prodi}/jenjang/{jenjang}
+     * Menampilkan kategori UKT berdasarkan id_prodi dan jenjang
      */
     public function getByProdiJenjang(string $id_prodi, string $jenjang)
     {
@@ -77,10 +81,14 @@ class KategoriUktController extends Controller
             )
             ->get();
 
+        $data = $kategori->map(function ($item) {
+            return $this->formatKategoriResponse($item);
+        });
+
         return response()->json([
             'success' => true,
             'message' => 'Data kategori UKT berdasarkan prodi dan jenjang berhasil diambil',
-            'data' => $kategori
+            'data' => $data
         ]);
     }
 
@@ -98,7 +106,7 @@ class KategoriUktController extends Controller
 
         $kategori = KategoriUkt::create([
             'id_prodi' => $request->id_prodi,
-            'kategori' => $request->kategori,
+            'kategori' => strtoupper($request->kategori),
             'nominal_ukt' => $request->nominal_ukt,
             'jenjang' => strtoupper($request->jenjang)
         ]);
@@ -106,7 +114,7 @@ class KategoriUktController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Kategori UKT berhasil ditambahkan',
-            'data' => $kategori
+            'data' => $this->formatKategoriResponse($kategori)
         ], 201);
     }
 
@@ -120,7 +128,7 @@ class KategoriUktController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Detail kategori UKT berhasil diambil',
-            'data' => $kategori
+            'data' => $this->formatKategoriResponse($kategori)
         ]);
     }
 
@@ -140,7 +148,7 @@ class KategoriUktController extends Controller
 
         $kategori->update([
             'id_prodi' => $request->id_prodi,
-            'kategori' => $request->kategori,
+            'kategori' => strtoupper($request->kategori),
             'nominal_ukt' => $request->nominal_ukt,
             'jenjang' => strtoupper($request->jenjang)
         ]);
@@ -148,7 +156,7 @@ class KategoriUktController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Kategori UKT berhasil diupdate',
-            'data' => $kategori
+            'data' => $this->formatKategoriResponse($kategori)
         ]);
     }
 
@@ -165,5 +173,19 @@ class KategoriUktController extends Controller
             'success' => true,
             'message' => 'Kategori UKT berhasil dihapus'
         ]);
+    }
+
+    /**
+     * Format response kategori UKT
+     */
+    private function formatKategoriResponse($item)
+    {
+        return [
+            'id_kategori_ukt' => $item->id_kategori_ukt,
+            'id_prodi' => $item->id_prodi,
+            'kategori' => $item->kategori,
+            'jenjang' => $item->jenjang,
+            'nominal_ukt' => (float) $item->nominal_ukt
+        ];
     }
 }

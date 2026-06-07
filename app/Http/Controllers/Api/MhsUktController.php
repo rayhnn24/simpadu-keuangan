@@ -4,8 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\MhsUkt;
-use Illuminate\Http\Request;
 use App\Models\KategoriUkt;
+use App\Models\StatusMhs;
+use Illuminate\Http\Request;
 
 class MhsUktController extends Controller
 {
@@ -14,11 +15,12 @@ class MhsUktController extends Controller
         $query = MhsUkt::with(
             'kategori',
             'beasiswaMhs.beasiswa',
-            'pembayaran'
+            'pembayaran',
+            'statusMhs'
         );
 
         if ($request->status) {
-            $query->where('status_pembayaran', $request->status);
+            $query->where('status_pembayaran', strtoupper($request->status));
         }
 
         if ($request->semester) {
@@ -69,10 +71,27 @@ class MhsUktController extends Controller
             'total_tagihan' => $kategori->nominal_ukt
         ]);
 
+        StatusMhs::updateOrCreate(
+            [
+                'id_mhs_ukt' => $mhsUkt->id_mhs_ukt
+            ],
+            [
+                'status' => 'NONAKTIF',
+                'keterangan' => 'Mahasiswa belum melakukan pembayaran UKT'
+            ]
+        );
+
+        $mhsUkt = MhsUkt::with(
+            'kategori',
+            'beasiswaMhs.beasiswa',
+            'pembayaran',
+            'statusMhs'
+        )->findOrFail($mhsUkt->id_mhs_ukt);
+
         return response()->json([
             'success' => true,
             'message' => 'Tagihan UKT berhasil ditambahkan',
-            'data' => $mhsUkt
+            'data' => $this->formatMhsUktResponse($mhsUkt)
         ], 201);
     }
 
@@ -81,7 +100,8 @@ class MhsUktController extends Controller
         $mhsUkt = MhsUkt::with(
             'kategori',
             'beasiswaMhs.beasiswa',
-            'pembayaran'
+            'pembayaran',
+            'statusMhs'
         )->findOrFail($id);
 
         return response()->json([
@@ -96,7 +116,8 @@ class MhsUktController extends Controller
         $mhsUkt = MhsUkt::with(
             'kategori',
             'beasiswaMhs.beasiswa',
-            'pembayaran'
+            'pembayaran',
+            'statusMhs'
         )
             ->whereRaw('LOWER(nim) = ?', [strtolower($nim)])
             ->first();
@@ -114,14 +135,16 @@ class MhsUktController extends Controller
             'data' => $this->formatMhsUktResponse($mhsUkt)
         ]);
     }
-        public function getByStatus(string $status)
+
+    public function getByStatus(string $status)
     {
         $status = strtoupper($status);
 
         $mhsUkt = MhsUkt::with(
             'kategori',
             'beasiswaMhs.beasiswa',
-            'pembayaran'
+            'pembayaran',
+            'statusMhs'
         )
             ->where('status_pembayaran', $status)
             ->get();
@@ -135,13 +158,15 @@ class MhsUktController extends Controller
             'message' => 'Data mahasiswa UKT berdasarkan status berhasil diambil',
             'data' => $data
         ]);
-    }  
-        public function getBySemester(string $semester)
+    }
+
+    public function getBySemester(string $semester)
     {
         $mhsUkt = MhsUkt::with(
             'kategori',
             'beasiswaMhs.beasiswa',
-            'pembayaran'
+            'pembayaran',
+            'statusMhs'
         )
             ->where('semester', $semester)
             ->get();
@@ -156,6 +181,7 @@ class MhsUktController extends Controller
             'data' => $data
         ]);
     }
+
     public function search(string $keyword)
     {
         $keyword = strtolower($keyword);
@@ -163,7 +189,8 @@ class MhsUktController extends Controller
         $mhsUkt = MhsUkt::with(
             'kategori',
             'beasiswaMhs.beasiswa',
-            'pembayaran'
+            'pembayaran',
+            'statusMhs'
         )
             ->whereRaw(
                 'LOWER(nim) LIKE ?',
@@ -180,7 +207,7 @@ class MhsUktController extends Controller
             'message' => 'Data mahasiswa UKT berhasil dicari',
             'data' => $data
         ]);
-    } 
+    }
 
     public function update(Request $request, string $id)
     {
@@ -205,10 +232,17 @@ class MhsUktController extends Controller
             'total_tagihan' => $kategori->nominal_ukt
         ]);
 
+        $mhsUkt = MhsUkt::with(
+            'kategori',
+            'beasiswaMhs.beasiswa',
+            'pembayaran',
+            'statusMhs'
+        )->findOrFail($id);
+
         return response()->json([
             'success' => true,
             'message' => 'Data berhasil diupdate',
-            'data' => $mhsUkt
+            'data' => $this->formatMhsUktResponse($mhsUkt)
         ]);
     }
 
@@ -229,101 +263,47 @@ class MhsUktController extends Controller
         $mhsUkt = MhsUkt::with(
             'kategori',
             'beasiswaMhs.beasiswa',
-            'pembayaran'
+            'pembayaran',
+            'statusMhs'
         )->findOrFail($id);
 
-        $mahasiswa = $this->getMahasiswaByNim($mhsUkt->nim);
+        $ringkasan = $this->formatMhsUktResponse($mhsUkt);
 
-        $nominalUkt = $mhsUkt->kategori
-            ? $mhsUkt->kategori->nominal_ukt
-            : 0;
-
-        $totalTagihan = $mhsUkt->total_tagihan;
-
-        if ($totalTagihan <= 0) {
-            $punyaBeasiswaPenuh =
-                $mhsUkt->beasiswaMhs &&
-                $mhsUkt->beasiswaMhs->beasiswa &&
-                $mhsUkt->beasiswaMhs->beasiswa->potongan_persen >= 100;
-
-            if (!$punyaBeasiswaPenuh) {
-                $totalTagihan = $nominalUkt;
-            }
-        }
-
-        $potonganPersen = (
-            $mhsUkt->beasiswaMhs &&
-            $mhsUkt->beasiswaMhs->beasiswa
-        )
-            ? $mhsUkt->beasiswaMhs->beasiswa->potongan_persen
-            : 0;
-
-        $potonganNominal = $nominalUkt - $totalTagihan;
-
-        if ($potonganNominal < 0) {
-            $potonganNominal = 0;
-        }
-
-        $totalBayar = $mhsUkt->pembayaran->sum('jumlah_bayar');
-
-        $sisaTagihan = $totalTagihan - $totalBayar;
-
-        if ($sisaTagihan < 0) {
-            $sisaTagihan = 0;
-        }
+        $historiPembayaran = $mhsUkt->pembayaran->map(function ($item) {
+            return [
+                'id_pembayaran' => $item->id_pembayaran,
+                'jumlah_bayar' => (float) $item->jumlah_bayar,
+                'tgl_pembayaran' => $item->tgl_pembayaran,
+                'keterangan' => $item->keterangan
+            ];
+        });
 
         return response()->json([
             'success' => true,
             'message' => 'Histori pembayaran berhasil diambil',
             'data' => [
-                'mahasiswa' => [
-                    'id_mhs_ukt' => $mhsUkt->id_mhs_ukt,
-                    'nim' => $mhsUkt->nim,
-                    'nama_mahasiswa' => $mahasiswa['nama_mahasiswa'],
-                    'prodi' => $mahasiswa['prodi'],
-                    'semester' => $mhsUkt->semester,
-                    'tahun_akademik' => $mhsUkt->tahun_akademik,
-                    'status_pembayaran' => $mhsUkt->status_pembayaran,
+                'mahasiswa_ukt' => [
+                    'id_mhs_ukt' => $ringkasan['id_mhs_ukt'],
+                    'nim' => $ringkasan['nim'],
+                    'semester' => $ringkasan['semester'],
+                    'tahun_akademik' => $ringkasan['tahun_akademik']
                 ],
 
-                'tagihan' => [
-                    'kategori_ukt' => $mhsUkt->kategori
-                        ? $mhsUkt->kategori->kategori
-                        : null,
+                'kategori_ukt' => $ringkasan['kategori_ukt'],
 
-                    'nominal_ukt' => $nominalUkt,
+                'beasiswa' => $ringkasan['beasiswa'],
 
-                    'nama_beasiswa' => (
-                        $mhsUkt->beasiswaMhs &&
-                        $mhsUkt->beasiswaMhs->beasiswa
-                    )
-                        ? $mhsUkt->beasiswaMhs->beasiswa->nama_beasiswa
-                        : null,
+                'tagihan' => $ringkasan['tagihan'],
 
-                    'potongan_persen' => $potonganPersen,
-                    'potongan_nominal' => $potonganNominal,
-                    'total_tagihan' => $totalTagihan,
-                    'total_bayar' => $totalBayar,
-                    'sisa_tagihan' => $sisaTagihan,
-                ],
+                'status' => $ringkasan['status'],
 
-                'histori_pembayaran' => $mhsUkt->pembayaran->map(function ($item) {
-                    return [
-                        'id_pembayaran' => $item->id_pembayaran,
-                        'jumlah_bayar' => $item->jumlah_bayar,
-                        'tgl_pembayaran' => $item->tgl_pembayaran,
-                        'keterangan' => $item->keterangan,
-                        'created_at' => $item->created_at,
-                    ];
-                })
+                'histori_pembayaran' => $historiPembayaran
             ]
         ]);
     }
 
     private function formatMhsUktResponse($item)
     {
-        $mahasiswa = $this->getMahasiswaByNim($item->nim);
-
         $totalBayar = $item->pembayaran->sum('jumlah_bayar');
 
         $nominalUkt = $item->kategori
@@ -365,65 +345,61 @@ class MhsUktController extends Controller
         return [
             'id_mhs_ukt' => $item->id_mhs_ukt,
             'nim' => $item->nim,
-            'nama_mahasiswa' => $mahasiswa['nama_mahasiswa'],
-            'prodi' => $mahasiswa['prodi'],
             'semester' => $item->semester,
             'tahun_akademik' => $item->tahun_akademik,
-            'status_pembayaran' => $item->status_pembayaran,
 
-            'kategori_ukt' => $item->kategori
-                ? $item->kategori->kategori
-                : null,
+            'kategori_ukt' => [
+                'id_kategori_ukt' => $item->kategori
+                    ? $item->kategori->id_kategori_ukt
+                    : null,
 
-            'id_prodi' => $item->kategori
-                ? $item->kategori->id_prodi
-                : null,
+                'id_prodi' => $item->kategori
+                    ? $item->kategori->id_prodi
+                    : null,
 
-            'jenjang' => $item->kategori
-                ? $item->kategori->jenjang
-                : null,
+                'kategori' => $item->kategori
+                    ? $item->kategori->kategori
+                    : null,
 
-            'nominal_ukt' => $nominalUkt,
+                'jenjang' => $item->kategori
+                    ? $item->kategori->jenjang
+                    : null,
 
-            'nama_beasiswa' => (
-                $item->beasiswaMhs &&
-                $item->beasiswaMhs->beasiswa
-            )
-                ? $item->beasiswaMhs->beasiswa->nama_beasiswa
-                : null,
-
-            'potongan_persen' => $potonganPersen,
-            'potongan_nominal' => $potonganNominal,
-            'total_tagihan' => $totalTagihan,
-            'total_bayar' => $totalBayar,
-            'sisa_tagihan' => $sisaTagihan
-        ];
-    }
-
-    private function getMahasiswaByNim($nim)
-    {
-        $dummyMahasiswa = [
-            'C030324095' => [
-                'nama_mahasiswa' => 'Rayhan',
-                'prodi' => 'Teknik Informatika'
+                'nominal_ukt' => (float) $nominalUkt
             ],
-            'C030324094' => [
-                'nama_mahasiswa' => 'imam',
-                'prodi' => 'Sistem Informasi'
+
+            'beasiswa' => [
+                'id_beasiswa_mhs' => $item->beasiswaMhs
+                    ? $item->beasiswaMhs->id_beasiswa_mhs
+                    : null,
+
+                'id_beasiswa' => $item->beasiswaMhs
+                    ? $item->beasiswaMhs->id_beasiswa
+                    : null,
+
+                'nama_beasiswa' => (
+                    $item->beasiswaMhs &&
+                    $item->beasiswaMhs->beasiswa
+                )
+                    ? $item->beasiswaMhs->beasiswa->nama_beasiswa
+                    : null,
+
+                'potongan_persen' => (float) $potonganPersen,
+                'potongan_nominal' => (float) $potonganNominal
             ],
-            'C030324093' => [
-                'nama_mahasiswa' => 'Ijan',
-                'prodi' => 'Teknik Informatika'
+
+            'tagihan' => [
+                'total_tagihan' => (float) $totalTagihan,
+                'total_bayar' => (float) $totalBayar,
+                'sisa_tagihan' => (float) $sisaTagihan
             ],
-            'C030324096' => [
-                'nama_mahasiswa' => 'adit',
-                'prodi' => 'Sistem Informasi'
+
+            'status' => [
+                'status_pembayaran' => $item->status_pembayaran,
+                'status_mhs' => $item->statusMhs
+                    ? $item->statusMhs->status
+                    : 'NONAKTIF'
             ]
-        ];
-
-        return $dummyMahasiswa[$nim] ?? [
-            'nama_mahasiswa' => 'Tidak ditemukan',
-            'prodi' => '-'
         ];
     }
 }

@@ -10,15 +10,14 @@ return new class extends Migration
     {
         Schema::table('kategori_ukt', function (Blueprint $table) {
             if (!Schema::hasColumn('kategori_ukt', 'id_prodi')) {
-                $table->integer('id_prodi')->after('id_kategori_ukt');
-            }
-
-            if (!Schema::hasColumn('kategori_ukt', 'kelompok_kategori')) {
-                $table->string('kelompok_kategori', 30)->after('id_prodi');
+                $table->integer('id_prodi')
+                    ->after('id_kategori_ukt');
             }
 
             if (!Schema::hasColumn('kategori_ukt', 'jenjang')) {
-                $table->string('jenjang', 10)->after('nominal_ukt')->nullable();
+                $table->string('jenjang', 10)
+                    ->nullable()
+                    ->after('nominal_ukt');
             }
         });
     }
@@ -26,11 +25,13 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('kategori_ukt', function (Blueprint $table) {
-            $table->dropColumn([
-                'id_prodi',
-                'kelompok_kategori',
-                'jenjang'
-            ]);
+            if (Schema::hasColumn('kategori_ukt', 'id_prodi')) {
+                $table->dropColumn('id_prodi');
+            }
+
+            if (Schema::hasColumn('kategori_ukt', 'jenjang')) {
+                $table->dropColumn('jenjang');
+            }
         });
     }
 };

@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\BeasiswaMhs;
 
 class MhsUkt extends Model
 {
@@ -24,6 +23,7 @@ class MhsUkt extends Model
     {
         return $this->belongsTo(
             KategoriUkt::class,
+            'id_kategori_ukt',
             'id_kategori_ukt'
         );
     }
@@ -32,23 +32,26 @@ class MhsUkt extends Model
     {
         return $this->hasMany(
             Pembayaran::class,
+            'id_mhs_ukt',
             'id_mhs_ukt'
         );
     }
 
-    public function status()
-    {
-        return $this->hasMany(
-            StatusMhs::class,
-            'id_mhs_ukt'
-        );
-    }
     public function beasiswaMhs()
     {
         return $this->hasOne(
             BeasiswaMhs::class,
             'nim',
             'nim'
+        );
+    }
+
+    public function statusMhs()
+    {
+        return $this->hasOne(
+            StatusMhs::class,
+            'id_mhs_ukt',
+            'id_mhs_ukt'
         );
     }
 }

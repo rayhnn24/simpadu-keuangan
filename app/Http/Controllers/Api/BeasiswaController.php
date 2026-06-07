@@ -8,9 +8,16 @@ use Illuminate\Http\Request;
 
 class BeasiswaController extends Controller
 {
+    /**
+     * Menampilkan semua master beasiswa
+     */
     public function index()
     {
-        $data = Beasiswa::get();
+        $beasiswa = Beasiswa::get();
+
+        $data = $beasiswa->map(function ($item) {
+            return $this->formatBeasiswaResponse($item);
+        });
 
         return response()->json([
             'success' => true,
@@ -18,25 +25,37 @@ class BeasiswaController extends Controller
             'data' => $data
         ]);
     }
-        public function getByNama(string $nama)
+
+    /**
+     * Cari beasiswa berdasarkan nama
+     */
+    public function getByNama(string $nama)
     {
         $beasiswa = Beasiswa::whereRaw(
             'LOWER(nama_beasiswa) LIKE ?',
             ['%' . strtolower($nama) . '%']
         )->get();
 
+        $data = $beasiswa->map(function ($item) {
+            return $this->formatBeasiswaResponse($item);
+        });
+
         return response()->json([
             'success' => true,
             'message' => 'Data beasiswa berhasil dicari',
-            'data' => $beasiswa
+            'data' => $data
         ]);
     }
 
+    /**
+     * Menyimpan master beasiswa baru
+     */
     public function store(Request $request)
     {
         $request->validate([
             'nama_beasiswa' => 'required',
-            'potongan_persen' => 'required|numeric|min:0|max:100'
+            'potongan_persen' => 'required|numeric|min:0|max:100',
+            'keterangan' => 'nullable'
         ]);
 
         $beasiswa = Beasiswa::create([
@@ -48,23 +67,36 @@ class BeasiswaController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Beasiswa berhasil ditambahkan',
-            'data' => $beasiswa
+            'data' => $this->formatBeasiswaResponse($beasiswa)
         ], 201);
     }
 
+    /**
+     * Menampilkan detail master beasiswa
+     */
     public function show(string $id)
     {
         $beasiswa = Beasiswa::findOrFail($id);
 
         return response()->json([
             'success' => true,
-            'data' => $beasiswa
+            'message' => 'Detail beasiswa berhasil diambil',
+            'data' => $this->formatBeasiswaResponse($beasiswa)
         ]);
     }
 
+    /**
+     * Update master beasiswa
+     */
     public function update(Request $request, string $id)
     {
         $beasiswa = Beasiswa::findOrFail($id);
+
+        $request->validate([
+            'nama_beasiswa' => 'required',
+            'potongan_persen' => 'required|numeric|min:0|max:100',
+            'keterangan' => 'nullable'
+        ]);
 
         $beasiswa->update([
             'nama_beasiswa' => $request->nama_beasiswa,
@@ -75,10 +107,13 @@ class BeasiswaController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Beasiswa berhasil diupdate',
-            'data' => $beasiswa
+            'data' => $this->formatBeasiswaResponse($beasiswa)
         ]);
     }
 
+    /**
+     * Hapus master beasiswa
+     */
     public function destroy(string $id)
     {
         $beasiswa = Beasiswa::findOrFail($id);
@@ -89,5 +124,18 @@ class BeasiswaController extends Controller
             'success' => true,
             'message' => 'Beasiswa berhasil dihapus'
         ]);
+    }
+
+    /**
+     * Format response master beasiswa
+     */
+    private function formatBeasiswaResponse($item)
+    {
+        return [
+            'id_beasiswa' => $item->id_beasiswa,
+            'nama_beasiswa' => $item->nama_beasiswa,
+            'keterangan' => $item->keterangan,
+            'potongan_persen' => (float) $item->potongan_persen
+        ];
     }
 }
