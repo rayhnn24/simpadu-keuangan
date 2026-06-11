@@ -12,7 +12,7 @@ class KategoriUkt extends Model
 
     protected $fillable = [
         'id_prodi',
-        'kelompok_kategori',
+        'kategori',
         'nominal_ukt',
         'jenjang'
     ];
