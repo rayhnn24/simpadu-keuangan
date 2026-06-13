@@ -73,6 +73,13 @@ class KategoriUktSeeder extends Seeder
                 'ukt' => [450000, 950000, 2000000, 3000000, 4000000],
                 'kerjasama' => null
             ],
+            [
+                'id_prodi' => 10,
+                'jenjang' => 'D3',
+                'prodi' => 'D3 Teknik Mesin',
+                'ukt' => [500000, 1000000, 2900000, 3900000, 4900000],
+                'kerjasama' => null
+            ],
         ];
 
         foreach ($dataProdi as $prodi) {
