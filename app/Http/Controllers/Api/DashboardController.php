@@ -32,29 +32,37 @@ class DashboardController extends Controller
             $totalTunggakan = 0;
         }
 
-        $rekapUktPerGolongan = MhsUkt::join('kategori_ukt', 'mhs_ukt.id_kategori_ukt', '=', 'kategori_ukt.id_kategori_ukt')
+        /*
+         * Rekap UKT digabung berdasarkan kategori.
+         * Jadi UKT 1 dari semua prodi akan dijumlahkan jadi satu baris.
+         */
+        $rekapUktPerGolongan = MhsUkt::join(
+                'kategori_ukt',
+                'mhs_ukt.id_kategori_ukt',
+                '=',
+                'kategori_ukt.id_kategori_ukt'
+            )
             ->select(
-                'kategori_ukt.id_kategori_ukt',
                 'kategori_ukt.kategori',
-                'kategori_ukt.jenjang',
-                'kategori_ukt.nominal_ukt',
                 DB::raw('COUNT(mhs_ukt.id_mhs_ukt) as jumlah_mahasiswa'),
                 DB::raw('SUM(mhs_ukt.total_tagihan) as total_ukt')
             )
-            ->groupBy(
-                'kategori_ukt.id_kategori_ukt',
-                'kategori_ukt.kategori',
-                'kategori_ukt.jenjang',
-                'kategori_ukt.nominal_ukt'
-            )
-            ->orderBy('kategori_ukt.id_kategori_ukt', 'asc')
+            ->groupBy('kategori_ukt.kategori')
+            ->orderByRaw("
+                CASE
+                    WHEN kategori_ukt.kategori = 'UKT 1' THEN 1
+                    WHEN kategori_ukt.kategori = 'UKT 2' THEN 2
+                    WHEN kategori_ukt.kategori = 'UKT 3' THEN 3
+                    WHEN kategori_ukt.kategori = 'UKT 4' THEN 4
+                    WHEN kategori_ukt.kategori = 'UKT 5' THEN 5
+                    WHEN kategori_ukt.kategori = 'JALUR KERJASAMA' THEN 6
+                    ELSE 7
+                END
+            ")
             ->get()
             ->map(function ($item) {
                 return [
-                    'id_kategori_ukt' => $item->id_kategori_ukt,
                     'kategori' => $item->kategori,
-                    'jenjang' => $item->jenjang,
-                    'nominal_ukt' => (float) $item->nominal_ukt,
                     'jumlah_mahasiswa' => (int) $item->jumlah_mahasiswa,
                     'total_ukt' => (float) $item->total_ukt,
                 ];
