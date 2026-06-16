@@ -46,7 +46,7 @@ class BeasiswaMhsSeeder extends Seeder
                     'id_beasiswa' => $beasiswa->id_beasiswa,
                 ],
                 [
-                    'keterangan' => 'Penerima beasiswa dari data seeder',
+                    'keterangan' => 'Penerima beasiswa aktif',
                 ]
             );
 
