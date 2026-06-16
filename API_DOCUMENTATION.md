@@ -1,7 +1,7 @@
 # API Documentation — SIMPADU Keuangan
 
 > **Base URL Local:** `http://127.0.0.1:8000/api`  
-> **Base URL VPS:** `http://domain-vps-kelompok-4/api`  
+> **Base URL VPS:** `https://keuangan4e06.vps-poliban.my.id/api`  
 > **Auth:** Bearer Token dari service Auth Kelompok 1  
 > **Role Utama:** Admin Keuangan  
 > **Modul:** Keuangan  
