@@ -38,13 +38,34 @@ class MhsUktSeeder extends Seeder
         $counterPerProdi = [];
 
         foreach ($mahasiswaList as $mahasiswa) {
-            $nim = $mahasiswa['nomor_identitas'] ?? null;
-            $prodiId = $mahasiswa['prodi_id'] ?? null;
-            $semester = $mahasiswa['semester']['nomor_semester'] ?? null;
-            $tahunAkademik = $mahasiswa['semester']['tahun_akademik_id'] ?? null;
+            // Support format Kelompok 3 dan Kelompok 1
+            $nim = $mahasiswa['nim']
+                ?? $mahasiswa['nomor_identitas']
+                ?? null;
+
+            $nama = $mahasiswa['nama_mhs']
+                ?? $mahasiswa['name']
+                ?? '-';
+
+            $prodiId = $mahasiswa['prodi_id']
+                ?? ($mahasiswa['prodi']['id'] ?? null);
+
+            // Jika prodi_id tidak ada, ambil dari prefix NIM
+            if (!$prodiId && $nim) {
+                $prodiId = $this->getProdiIdFromNim($nim);
+            }
+
+            // Jika semester dan tahun akademik tidak ada, kasih default
+            $semester = $mahasiswa['semester']['nomor_semester']
+                ?? $mahasiswa['semester']
+                ?? 2;
+
+            $tahunAkademik = $mahasiswa['semester']['tahun_akademik_id']
+                ?? $mahasiswa['tahun_akademik']
+                ?? '20242';
 
             if (!$nim || !$prodiId || !$semester || !$tahunAkademik) {
-                echo "Data tidak lengkap, dilewati.\n";
+                echo "Data tidak lengkap, dilewati. NIM: " . ($nim ?? 'kosong') . "\n";
                 continue;
             }
 
@@ -54,7 +75,6 @@ class MhsUktSeeder extends Seeder
                 $counterPerProdi[$keyCounter] = 0;
             }
 
-            $kategoriDipilih = null;
             $kategoriTersedia = [];
 
             foreach ($kategoriUrutan as $kategori) {
@@ -108,7 +128,27 @@ class MhsUktSeeder extends Seeder
                 ]
             );
 
-            echo "Berhasil seed NIM {$nim} - {$kategoriDipilih}\n";
+            echo "Berhasil seed NIM {$nim} - {$nama} - Prodi {$prodiId} - {$kategoriDipilih}\n";
         }
+    }
+
+    private function getProdiIdFromNim(string $nim): ?int
+    {
+        $prefix = substr($nim, 0, 4);
+
+        $mapping = [
+            'A001' => 1,  // D3 Administrasi Bisnis
+            'A002' => 2,  // D4 Bisnis Digital
+            'C003' => 3,  // D4 Teknologi Rekayasa Pembangkit Energi
+            'C004' => 4,  // D4 Sistem Informasi Kota Cerdas
+            'C005' => 5,  // D4 Teknologi Rekayasa Otomasi
+            'C006' => 6,  // D3 Elektronika
+            'C007' => 7,  // D3 Teknik Informatika
+            'C008' => 8,  // D3 Teknik Listrik
+            'A009' => 9,  // D3 Sistem Informasi
+            'C010' => 10, // D3 Teknik Mesin
+        ];
+
+        return $mapping[$prefix] ?? null;
     }
 }
